@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 
 
 def show_w2v_word_embedding(model, data, path):
-    word_emb = model.embeddings.get_weights().numpy()
+    word_emb = model.embeddings.get_weights()[0]
+    print(word_emb)
     for i in range(data.num_word):
         c = "blue"
         try:
@@ -24,5 +25,5 @@ def show_w2v_word_embedding(model, data, path):
     plt.yticks(())
     plt.xlabel("embedding dim1")
     plt.ylabel("embedding dim2")
-    plt.savefig(path, dpi=300, format="png")
+    # plt.savefig(path, dpi=300, format="png")
     plt.show()
