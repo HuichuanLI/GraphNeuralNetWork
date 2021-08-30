@@ -6,3 +6,7 @@ TransX/pytorch/.DS_Store
 .DS_Store
 
 .idea/
+
+MetapathVec/net_dbis/
+
+Seq2seq/__pycache__/
