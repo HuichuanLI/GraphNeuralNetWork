@@ -10,3 +10,5 @@ TransX/pytorch/.DS_Store
 MetapathVec/net_dbis/
 
 Seq2seq/__pycache__/
+
+MetapathVec/__pycache__/

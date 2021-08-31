@@ -5,6 +5,7 @@
 # @Software: PyCharm
 
 import numpy as np
+from skip_gram import SkipGram, train
 
 np.random.seed(12345)
 
@@ -110,7 +111,71 @@ class DataReader:
         return response
 
 
+def Process_Metapath2vecDataset(data, window_size, inputFileName):
+    # return the list of pairs (center, context, 5 negatives)
+    inputFileName = open(inputFileName, encoding="ISO-8859-1")
+    line = inputFileName.readline()
+
+    while line:
+        # https://www.runoob.com/python/file-seek.html
+        # 当文件读完的时候，重新回到文件的开头开始读取
+
+        if len(line) > 1:
+            words = line.split()
+
+            if len(words) > 1:
+                # "w in self.data.word2id": 词频>=min_count
+                # "discards": 满足word2vec中的subsampling
+                word_ids = [data.word2id[w] for w in words if
+                            w in data.word2id and np.random.rand() < data.discards[data.word2id[w]]]
+                # 打包成一组带训练的数据:(u, v, [n1, n2, n3, n4, n5])
+                # 其中n1, n2, n3, n4, n5是一个个negative sample
+                pair_catch = []
+                # 遍历每一个节点u
+                for i, u in enumerate(word_ids):
+                    # 对每一个节点u的上下文节点v组成正样本pair (u, v)
+                    # v的范围长度由window_size决定
+                    for j, v in enumerate(
+                            word_ids[max(i - window_size, 0):i + window_size]):
+                        assert u < data.word_count
+                        assert v < data.word_count
+                        if i == j:
+                            continue
+                        pair_catch.append((u, data.getNegatives(v, 5), v))
+        line = inputFileName.readline()
+
+    return pair_catch
+
+
+class Dataset:
+    def __init__(self, x, y, v2i, i2v):
+        self.x, self.y = x, y
+        self.v2i, self.i2v = v2i, i2v
+        self.vocab = v2i.keys()
+
+    def sample(self, n):
+        b_idx = np.random.randint(0, len(self.x), n)
+        bx, by = self.x[b_idx], self.y[b_idx]
+        return bx, by
+
+    @property
+    def num_word(self):
+        return len(self.v2i)
+
+
 if __name__ == "__main__":
     min_count = 5
     care_type = 0
+    window_emb = 128
     data = DataReader("./net_dbis/output_path.txt", min_count, care_type)
+    dataset = Process_Metapath2vecDataset(data=data, inputFileName="./net_dbis/output_path.txt", window_size=7)
+    # print(dataset)
+    dataset = np.asarray(dataset)
+    print(dataset.shape)
+    d1 = Dataset(dataset[:, 0], dataset[:, -1], data.word2id, data.id2word)
+
+    m = SkipGram(d1.num_word, window_emb)
+    train(m, d1)
+    # print(m([1, 2, 3]))
+    word_emb = m.embeddings.get_weights()[0]
+    print(word_emb)
