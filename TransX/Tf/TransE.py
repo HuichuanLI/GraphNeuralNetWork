@@ -31,8 +31,7 @@ class TransE(tf.keras.Model):
     def compute_loss(self, x):
         # 计算一个批次数据的合页损失函数值
         # 获得头、尾、关系的 ID
-        pos_h_id, pos_t_id, pos_r_id, neg_h_id, neg_t_id, neg_r_id = x[:, 0], x[:, 1], x[:, 2], x[:, 3], x[:, 4], x[:,
-                                                                                                                  5]
+        pos_h_id, pos_t_id, pos_r_id, neg_h_id, neg_t_id, neg_r_id = x[:, 0], x[:, 1], x[:, 2], x[:, 3], x[:, 4], x[:, 5]
         # 根据ID获得语义向量(E)和转移向量(T)
         pos_h_e = self.ent_embeddings(pos_h_id)
         pos_t_e = self.ent_embeddings(pos_t_id)

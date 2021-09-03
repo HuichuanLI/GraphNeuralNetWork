@@ -6,7 +6,7 @@
 import tensorflow as tf
 
 
-class TrasnD(tf.keras.Model):
+class TransD(tf.keras.Model):
     '''TransD模型类,定义TransD的参数空间和loss计算
     '''
 

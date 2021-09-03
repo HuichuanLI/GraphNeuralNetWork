@@ -6,7 +6,7 @@
 import tensorflow as tf
 
 
-class TrasnR(tf.keras.Model):
+class TransR(tf.keras.Model):
     '''TransR模型类,定义TransR的参数空间和loss计算
     '''
 
