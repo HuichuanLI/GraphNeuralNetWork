@@ -29,6 +29,7 @@ if __name__ == "__main__":
                   loss='categorical_crossentropy',
                   weighted_metrics=['categorical_crossentropy', 'acc'])
     features.sort_indices()
+    print(features.toarray())
     model_input = [features.toarray(), adj.toarray()]
     val_data = (model_input, y_val, val_mask)
 
