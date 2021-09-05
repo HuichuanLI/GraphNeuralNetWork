@@ -60,6 +60,8 @@ def load_data(path="./data/cora/", dataset="cora"):
 
     # 由于文件中节点并非是按顺序排列的，因此建立一个编号为0-(node_size-1)的哈希表idx_map，
     # 哈希表中每一项为old id: number，即节点id对应的编号为number
+    idx = np.array(idx_features_labels[:, 0], dtype=np.int32)
+
     idx_map = {j: i for i, j in enumerate(idx)}
 
     # edges_unordered为直接从边表文件中直接读取的结果，是一个(edge_num, 2)的数组，每一行表示一条边两个端点的idx
