@@ -50,6 +50,50 @@ def normalize_features(mx):
     return mx
 
 
+def get_splits(y, ):
+    idx_list = np.arange(len(y))
+    # train_val, idx_test = train_test_split(idx_list, test_size=0.2, random_state=1024)  # 1000
+    # idx_train, idx_val = train_test_split(train_val, test_size=0.2, random_state=1024)  # 500
+
+    idx_train = []
+    label_count = {}
+    for i, label in enumerate(y):
+        label = np.argmax(label)
+        if label_count.get(label, 0) < 20:
+            idx_train.append(i)
+            label_count[label] = label_count.get(label, 0) + 1
+
+    idx_val_test = list(set(idx_list) - set(idx_train))
+    idx_val = idx_val_test[0:500]
+    idx_test = idx_val_test[500:1500]
+
+    y_train = np.zeros(y.shape, dtype=np.int32)
+    y_val = np.zeros(y.shape, dtype=np.int32)
+    y_test = np.zeros(y.shape, dtype=np.int32)
+    y_train[idx_train] = y[idx_train]
+    y_val[idx_val] = y[idx_val]
+    y_test[idx_test] = y[idx_test]
+    train_mask = sample_mask(idx_train, y.shape[0])
+    val_mask = sample_mask(idx_val, y.shape[0])
+    test_mask = sample_mask(idx_test, y.shape[0])
+
+    return y_train, y_val, y_test, train_mask, val_mask, test_mask
+
+
+def sample_mask(idx, l):
+    mask = np.zeros(l)
+    mask[idx] = 1
+    return np.array(mask, dtype=np.bool)
+
+
+def convert_symmetric(X, sparse=True):
+    if sparse:
+        X += X.T - sp.diags(X.diagonal())
+    else:
+        X += X.T - np.diag(X.diagonal())
+    return X
+
+
 def load_data(path="./data/cora/", dataset="cora"):
     """Load citation network dataset (cora only for now)"""
     print('Loading {} dataset...'.format(dataset))
@@ -82,14 +126,16 @@ def load_data(path="./data/cora/", dataset="cora"):
     # 对于无向图，邻接矩阵是对称的。上一步得到的adj是按有向图构建的，转换成无向图的邻接矩阵需要扩充成对称矩阵
     # 将i->j与j->i中权重最大的那个, 作为无向图的节点i与节点j的边权.
     # https://blog.csdn.net/Eric_1993/article/details/102907104
-    adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
+    # adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
+    adj = convert_symmetric(adj, )
 
     features = normalize_features(features)
 
     adj = normalize_adj(adj + sp.eye(adj.shape[0]))
 
-    idx_train = range(140)
-    idx_val = range(200, 500)
-    idx_test = range(500, 1500)
+    # idx_train = range(140)
+    # idx_val = range(200, 500)
+    # idx_test = range(500, 1500)
+    y_train, y_val, y_test, train_mask, val_mask, test_mask = get_splits(labels)
 
-    return adj, features, labels, idx_train, idx_val, idx_test
+    return adj, features, y_train, y_val, y_test, train_mask, val_mask, test_mask

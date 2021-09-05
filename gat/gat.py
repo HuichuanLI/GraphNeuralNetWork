@@ -4,11 +4,11 @@
 # @File : gat.py
 # @Software: PyCharm
 import tensorflow as tf
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.initializers import Zeros
-from tensorflow.python.keras.layers import Layer, Dropout, Input
-from tensorflow.python.keras.regularizers import l2
-from tensorflow.python.keras.models import Model
+from tensorflow.keras import backend as K
+from tensorflow.keras.initializers import Zeros
+from tensorflow.keras.layers import Layer, Dropout, Input
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.models import Model
 
 
 class GATLayer(Layer):
@@ -52,21 +52,20 @@ class GATLayer(Layer):
             self.bias_weight = self.add_weight(name='bias', shape=[1, self.head_num, self.att_embedding_size],
                                                dtype=tf.float32,
                                                initializer=Zeros())
-        self.in_dropout = Dropout(self.dropout_rate)
-        self.feat_dropout = Dropout(self.dropout_rate, )
-        self.att_dropout = Dropout(self.dropout_rate, )
+        self.in_dropout = tf.keras.layers.Dropout(self.dropout_rate)
+        self.feat_dropout = tf.keras.layers.Dropout(self.dropout_rate, )
+        self.att_dropout = tf.keras.layers.Dropout(self.dropout_rate, )
         # Be sure to call this somewhere!
         super(GATLayer, self).build(input_shape)
 
     def call(self, inputs, training=None, **kwargs):
         X, A = inputs
-        X = self.in_dropout(X)  # N * D
+        # X = self.in_dropout(X)  # N * D
         # A = self.att_dropout(A, training=training)
         if K.ndim(X) != 2:
             raise ValueError(
                 "Unexpected inputs dimensions %d, expect to be 2 dimensions" % (K.ndim(X)))
-
-        features = tf.matmul(X, self.weight, )  # None F'*head_num
+        features = tf.matmul(X, self.weight)  # None F'*head_num
         features = tf.reshape(
             features, [-1, self.head_num, self.att_embedding_size])  # None head_num F'
         attn_for_self = tf.reduce_sum(
@@ -75,11 +74,9 @@ class GATLayer(Layer):
             features * self.att_neighs_weight, axis=-1, keepdims=True)
         dense = tf.transpose(
             attn_for_self, [1, 0, 2]) + tf.transpose(attn_for_neighs, [1, 2, 0])
-        print(dense)
         dense = tf.nn.leaky_relu(dense, alpha=0.2)
         mask = -10e9 * (1.0 - A)
         dense += tf.expand_dims(mask, axis=0)  # [?,8,8], [1,?,2708]
-        print(dense)
         self.normalized_att_scores = tf.nn.softmax(
             dense, axis=-1, )  # head_num None(F) None(F)
 
@@ -91,8 +88,10 @@ class GATLayer(Layer):
         # head_num*None*D
         # head_num*None*F'
 
+
         result = tf.matmul(self.normalized_att_scores,
                            tf.transpose(features, [1, 0, 2]))  # head_num None F D   [8,2708,8] [8,2708,3]
+
         print("result")
         print(self.normalized_att_scores)
         print(tf.transpose(features, [1, 0, 2]))
@@ -145,5 +144,6 @@ def GAT(adj_dim, feature_dim, num_class, num_layers=2, n_attn_heads=8, att_embed
                  activation=tf.nn.softmax, use_bias=use_bias, reduction='mean')([h, A_in])
 
     model = Model(inputs=[X_in, A_in], outputs=h)
+    print(model.summary())
 
     return model

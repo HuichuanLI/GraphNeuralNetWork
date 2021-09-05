@@ -127,7 +127,6 @@ def GAT(adj_dim, feature_dim, num_class, n_attn_heads=8, att_embedding_size=8, d
                  dropout_rate=dropout_rate,
                  l2_reg=l2_reg,
                  activation=tf.nn.softmax, reduction='mean')([attentions, A_in])
-    print(h)
     model = Model(inputs=[X_in, A_in], outputs=h)
 
     return model
