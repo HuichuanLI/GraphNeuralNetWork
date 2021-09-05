@@ -135,4 +135,3 @@ class GraphEmbedding_TranX(object):
 if __name__ == "__main__":
     graphembeddingtranx = GraphEmbedding_TranX()
     graphembeddingtranx.run()  # 运行图表征，获得表征结果
-    
