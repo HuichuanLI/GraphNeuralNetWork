@@ -70,28 +70,35 @@ class GATLayer(Layer):
         features = tf.reshape(
             features, [-1, self.head_num, self.att_embedding_size])  # None head_num F'
         attn_for_self = tf.reduce_sum(
-            features * self.att_self_weight, axis=-1, keep_dims=True)  # None head_num 1
+            features * self.att_self_weight, axis=-1, keepdims=True)  # None head_num 1
         attn_for_neighs = tf.reduce_sum(
-            features * self.att_neighs_weight, axis=-1, keep_dims=True)
+            features * self.att_neighs_weight, axis=-1, keepdims=True)
         dense = tf.transpose(
             attn_for_self, [1, 0, 2]) + tf.transpose(attn_for_neighs, [1, 2, 0])
-
+        print(dense)
         dense = tf.nn.leaky_relu(dense, alpha=0.2)
         mask = -10e9 * (1.0 - A)
         dense += tf.expand_dims(mask, axis=0)  # [?,8,8], [1,?,2708]
-
-
+        print(dense)
         self.normalized_att_scores = tf.nn.softmax(
-            dense, dim=-1, )  # head_num None(F) None(F)
+            dense, axis=-1, )  # head_num None(F) None(F)
+
+        print(self.normalized_att_scores)
 
         features = self.feat_dropout(features, )
         self.normalized_att_scores = self.att_dropout(
             self.normalized_att_scores)
+        # head_num*None*D
+        # head_num*None*F'
 
         result = tf.matmul(self.normalized_att_scores,
                            tf.transpose(features, [1, 0, 2]))  # head_num None F D   [8,2708,8] [8,2708,3]
-        result = tf.transpose(result, [1, 0, 2])  # None head_num attsize
+        print("result")
+        print(self.normalized_att_scores)
+        print(tf.transpose(features, [1, 0, 2]))
 
+        print(result)
+        result = tf.transpose(result, [1, 0, 2])  # None head_num attsize
         if self.use_bias:
             result += self.bias_weight
 
@@ -102,7 +109,8 @@ class GATLayer(Layer):
             result = tf.squeeze(result, axis=1)
         else:
             result = tf.reduce_mean(result, axis=1)
-
+        print("result2")
+        print(result)
         if self.act:
             result = self.activation(result)
 
@@ -132,7 +140,7 @@ def GAT(adj_dim, feature_dim, num_class, num_layers=2, n_attn_heads=8, att_embed
         h = GATLayer(att_embedding_size=att_embedding_size, head_num=n_attn_heads, dropout_rate=dropout_rate,
                      l2_reg=l2_reg,
                      activation=tf.nn.elu, use_bias=use_bias, )([h, A_in])
-
+    print("end")
     h = GATLayer(att_embedding_size=num_class, head_num=1, dropout_rate=dropout_rate, l2_reg=l2_reg,
                  activation=tf.nn.softmax, use_bias=use_bias, reduction='mean')([h, A_in])
 

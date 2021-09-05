@@ -20,3 +20,5 @@ TransX/Tf/Entity_cluster/readme.md
 TransX/Tf/result/
 
 Graph/data/cora/README
+
+gat/__pycache__/
