@@ -5,7 +5,6 @@
 # @Software: PyCharm
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.initializers import Zeros
 from tensorflow.python.keras.layers import Layer, Dropout, Input
 from tensorflow.python.keras.regularizers import l2
 from tensorflow.python.keras.models import Model
@@ -91,7 +90,7 @@ class GATLayer(Layer):
 
         # head_num Node embeding_size
         if self.reduction == "concat":
-            result = tf.nn.elu(result)
+            result = self.activation(result)
             return result
         else:
             return result
@@ -126,7 +125,11 @@ def GAT(adj_dim, feature_dim, num_class, n_attn_heads=8, att_embedding_size=8, d
     h = GATLayer(in_features=att_embedding_size * n_attn_heads, adj_dim=adj_dim, out_features=num_class,
                  dropout_rate=dropout_rate,
                  l2_reg=l2_reg,
-                 activation=tf.nn.softmax, reduction='mean')([attentions, A_in])
+                 activation=tf.nn.softmax)([attentions, A_in])
     model = Model(inputs=[X_in, A_in], outputs=h)
+    model.__setattr__("embedding", attentions)
+    model.__setattr__("adj_input", A_in)
+    model.__setattr__("feature_input", X_in)
+
 
     return model
