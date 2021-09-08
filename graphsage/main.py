@@ -35,7 +35,7 @@ if __name__ == "__main__":
                       n_classes=y_train.shape[1],
                       use_bias=True,
                       activation=tf.nn.relu,
-                      aggregator_type='mean',
+                      aggregator_type='mean1',
                       dropout_rate=0.5, l2_reg=2.5e-4)
     model.compile(Adam(0.01), 'categorical_crossentropy',
                   weighted_metrics=['categorical_crossentropy', 'acc'])
@@ -44,8 +44,9 @@ if __name__ == "__main__":
     val_data = (model_input, y_val, val_mask)
 
     model.fit(model_input, y_train, sample_weight=train_mask, validation_data=val_data,
-              batch_size=adj.shape[0], epochs=1, shuffle=False, verbose=2)
+              batch_size=adj.shape[0], epochs=10, shuffle=False, verbose=2)
 
     embedding_model = Model(model.input, model.embedding)
     embedding_weights = embedding_model.predict(model_input, batch_size=adj.shape[0])
 
+    print(embedding_weights.shape)

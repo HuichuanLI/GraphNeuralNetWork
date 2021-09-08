@@ -53,8 +53,6 @@ class MeanAggregator(Layer):
 
         node_feat = tf.nn.embedding_lookup(features, node)
         neigh_feat = tf.nn.embedding_lookup(features, neighbours)
-        print(node_feat)
-        print(neigh_feat)
 
         node_feat = self.dropout(node_feat, training=training)
         neigh_feat = self.dropout(neigh_feat, training=training)
@@ -83,6 +81,91 @@ class MeanAggregator(Layer):
         return dict(list(base_config.items()) + list(config.items()))
 
 
+class PoolingAggregator(Layer):
+
+    def __init__(self, units, input_dim, neigh_max, aggregator='meanpooling', concat=True,
+                 dropout_rate=0.0,
+                 activation=tf.nn.relu, l2_reg=0, use_bias=False,
+                 seed=1024, ):
+        super(PoolingAggregator, self).__init__()
+        self.output_dim = units
+        self.input_dim = input_dim
+        self.concat = concat
+        self.pooling = aggregator
+        self.dropout_rate = dropout_rate
+        self.l2_reg = l2_reg
+        self.use_bias = use_bias
+        self.activation = activation
+        self.neigh_max = neigh_max
+        self.seed = seed
+
+        # if neigh_input_dim is None:
+
+    def build(self, input_shapes):
+
+        self.dense_layers = [Dense(
+            self.input_dim, activation='relu', use_bias=True, kernel_regularizer=l2(self.l2_reg))]
+
+        self.neigh_weights = self.add_weight(
+            shape=(self.input_dim * 2, self.output_dim),
+            initializer=glorot_uniform(
+                seed=self.seed),
+            regularizer=l2(self.l2_reg),
+
+            name="neigh_weights")
+
+        if self.use_bias:
+            self.bias = self.add_weight(shape=(self.output_dim,),
+                                        initializer=Zeros(),
+                                        name='bias_weight')
+
+        self.built = True
+
+    def call(self, inputs, mask=None):
+
+        features, node, neighbours = inputs
+
+        node_feat = tf.nn.embedding_lookup(features, node)
+        neigh_feat = tf.nn.embedding_lookup(features, neighbours)
+
+        dims = tf.shape(neigh_feat)
+        batch_size = dims[0]
+        num_neighbors = dims[1]
+        h_reshaped = tf.reshape(
+            neigh_feat, (batch_size * num_neighbors, self.input_dim))
+
+        for l in self.dense_layers:
+            h_reshaped = l(h_reshaped)
+        neigh_feat = tf.reshape(
+            h_reshaped, (batch_size, num_neighbors, int(h_reshaped.shape[-1])))
+
+        if self.pooling == "meanpooling":
+            neigh_feat = tf.reduce_mean(neigh_feat, axis=1, keep_dims=False)
+        else:
+            neigh_feat = tf.reduce_max(neigh_feat, axis=1)
+
+        output = tf.concat(
+            [tf.squeeze(node_feat, axis=1), neigh_feat], axis=-1)
+
+        output = tf.matmul(output, self.neigh_weights)
+        if self.use_bias:
+            output += self.bias
+        if self.activation:
+            output = self.activation(output)
+
+        # output = tf.nn.l2_normalize(output, dim=-1)
+
+        return output
+
+    def get_config(self):
+        config = {'output_dim': self.output_dim,
+                  'concat': self.concat
+                  }
+
+        base_config = super(PoolingAggregator, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+
 def GraphSAGE(feature_dim, neighbor_num, n_hidden, n_classes, use_bias=True, activation=tf.nn.relu,
               aggregator_type='mean', dropout_rate=0.0, l2_reg=0):
     features = Input(shape=(feature_dim,))
@@ -90,6 +173,8 @@ def GraphSAGE(feature_dim, neighbor_num, n_hidden, n_classes, use_bias=True, act
     neighbor_input = [Input(shape=(l,), dtype=tf.int32) for l in neighbor_num]
     if aggregator_type == 'mean':
         aggregator = MeanAggregator
+    else:
+        aggregator = PoolingAggregator
     h = features
 
     for i in range(0, len(neighbor_num)):
