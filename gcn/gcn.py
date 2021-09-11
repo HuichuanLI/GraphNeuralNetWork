@@ -53,13 +53,11 @@ class GraphConvolution(Layer):  # ReLU(AXW)
     def call(self, inputs, training=None, **kwargs):
         features, A = inputs
         features = self.dropout(features, training=training)
-        output = tf.matmul(tf.sparse_tensor_dense_matmul(
-            A, features), self.kernel)
-        if self.bias:
+        output = tf.matmul(tf.matmul(A, features), self.kernel)
+        if self.use_bias:
             output += self.bias
         act = self.activation(output)
 
-        act._uses_learning_phase = features._uses_learning_phase
         return act
 
     def get_config(self):
@@ -78,7 +76,7 @@ class GraphConvolution(Layer):  # ReLU(AXW)
 
 def GCN(adj_dim, feature_dim, n_hidden, num_class, num_layers=2, activation=tf.nn.relu, dropout_rate=0.5, l2_reg=0,
         feature_less=True, ):
-    Adj = Input(shape=(None,), sparse=True)
+    Adj = Input(shape=(None,), sparse=False)
     if feature_less:
         X_in = Input(shape=(1,), )
 
@@ -99,5 +97,9 @@ def GCN(adj_dim, feature_dim, n_hidden, num_class, num_layers=2, activation=tf.n
 
     output = h
     model = Model(inputs=[X_in, Adj], outputs=output)
+
+    model.__setattr__("embedding", output)
+    model.__setattr__("adj_input", Adj)
+    model.__setattr__("feature_input", X_in)
 
     return model
