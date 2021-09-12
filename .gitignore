@@ -22,3 +22,9 @@ TransX/Tf/result/
 Graph/data/cora/README
 
 gat/__pycache__/
+
+EGES/__pycache__/
+
+EGES/data_cache/
+
+EGES/data/
