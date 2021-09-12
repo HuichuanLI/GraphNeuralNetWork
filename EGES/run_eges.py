@@ -82,6 +82,6 @@ if __name__ == '__main__':
                   "{:.4f} sec/batch".format((end - start) / print_every_k_iterations))
             start = time.time()
 
-            
+
 
     print(EGES.get_embedding(side_info[:, 0]))

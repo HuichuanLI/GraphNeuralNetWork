@@ -48,6 +48,7 @@ class EGES_Model(keras.Model):
             cat_embed = tf.nn.embedding_lookup(self.cat_embedding[i], self.batch_features[:, i])
             embed_list.append(cat_embed)
         stack_embed = tf.stack(embed_list, axis=-1)
+        print(stack_embed)
         # attention merge
         alpha_embed = tf.nn.embedding_lookup(self.alpha_embedding, self.batch_features[:, 0])
         alpha_embed_expand = tf.expand_dims(alpha_embed, 1)
@@ -80,7 +81,6 @@ class EGES_Model(keras.Model):
         alpha_embed_expand = tf.expand_dims(alpha_embed, 1)
         alpha_i_sum = tf.reduce_sum(tf.exp(alpha_embed_expand), axis=-1)
         self.merge_emb = tf.reduce_sum(stack_embed * tf.exp(alpha_embed_expand), axis=-1) / alpha_i_sum
-
         return self.make_skipgram_loss(batch_labels)
 
     def get_embedding(self, batch_index):
