@@ -28,3 +28,21 @@ EGES/__pycache__/
 EGES/data_cache/
 
 EGES/data/
+
+GNN/data_set/ml-100k-orginal/
+
+*.pyc
+
+GNN/data_set/ml-100k/
+
+*.model
+
+*.emd
+
+data/Cora/Cora/processed/
+
+data/Cora/Cora/raw/
+
+GNN/data_set/ml-latest-small/
+
+*.txt
