@@ -14,7 +14,7 @@ class GFM(torch.nn.Module):
 
         super(GFM, self).__init__()
 
-        self.entitys = nn.Embedding(n_entitys, dim, max_norm=1)
+        self.entitys = nn.Embedding(n_entitys, dim)
         self.users = nn.Embedding(n_users, dim, max_norm=1)
 
     def FMaggregator(self, target_embs, neighbor_entitys_embeddings):

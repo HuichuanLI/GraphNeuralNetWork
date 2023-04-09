@@ -7,6 +7,8 @@ from torch import nn
 import numpy as np
 from sklearn.metrics import precision_score, recall_score, accuracy_score
 
+torch.autograd.set_detect_anomaly(True)
+
 
 class GAT4Rec(torch.nn.Module):
 
@@ -14,7 +16,7 @@ class GAT4Rec(torch.nn.Module):
 
         super(GAT4Rec, self).__init__()
 
-        self.entitys = nn.Embedding(n_entitys, dim, max_norm=1)
+        self.entitys = nn.Embedding(n_entitys, dim)
         self.users = nn.Embedding(n_users, dim, max_norm=1)
 
         self.multiHeadNumber = 2
@@ -63,19 +65,26 @@ class GAT4Rec(torch.nn.Module):
 
     def gnnForward(self, adj_lists):
         n_hop = 0
-        for df in adj_lists:
+        adj_lists_clone = list(adj_lists)
+
+        for df in adj_lists_clone:
+            ab = torch.from_numpy(df.values)
             if n_hop == 0:
                 # 最外阶的聚合可直接通过初始索引提取 [ 图采样时的某一阶的中心节点数量, neibours, dim ]
-                entity_embs = self.entitys(torch.LongTensor(df.values))
+                entity_embs = self.entitys(torch.LongTensor(ab))
             else:
                 '''第二次开始聚合的邻居向量是第一次聚合后得到的，所以不能直接用self.entitys去提取，
                 而是应该用上一次的聚合输出aggEmbeddings来提取节点向量表示。但图采样记录的节点索引
                 对应的是self.entitys的节点索引，无法通过该索引直接提取出aggEmbeddings中对应的向量，
                 所以需要一个记录初始索引映射到更新后索引的映射表neighbourIndexs。通过这些内容提取向
                 量的具体操作可详见self.__getEmbeddingByNeibourIndex()这个方法'''
-                entity_embs = self.__getEmbeddingByNeibourIndex(df.values, neighborIndexs, aggEmbeddings)
+                entity_embs = self.__getEmbeddingByNeibourIndex(ab, neighborIndexs, aggEmbeddings)
             # [图采样时的某一阶的中心节点数量, dim ]
-            target_embs = self.entitys(torch.LongTensor(df.index))
+            # target_index = torch.from_numpy(np.array(df.index)).clone()
+            # print(df.index)
+            ab = np.array(list(df.index))
+            target_embs = self.entitys(torch.from_numpy(ab))
+            # print(target_embs)
             if n_hop < len(adj_lists):
                 neighborIndexs = pd.DataFrame(range(len(df.index)), index=df.index)
             # 将得到的目标节点向量与其邻居节点向量传入GAT的多头注意力层聚合出更新后的目标节点向量
@@ -103,7 +112,7 @@ def doEva(net, d, G):
     d = torch.LongTensor(d)
     u, i, r = d[:, 0], d[:, 1], d[:, 2]
     i_index = i.detach().numpy()
-    adj_lists = dataloader4graph.graphSage4RecAdjType(G, i_index)
+    adj_lists = dataloader4graph.graphSage4RecAdjType(G, i_index, n_sizes=[5])
     out = net(u, adj_lists)
     y_pred = np.array([1 if i >= 0.5 else 0 for i in out])
     y_true = r.detach().numpy()
@@ -121,30 +130,31 @@ def train(epoch=20, batchSize=1024, dim=128, lr=0.01, eva_per_epochs=1):
 
     criterion = torch.nn.BCELoss()
     optimizer = torch.optim.AdamW(net.parameters(), lr=lr)
+    with torch.autograd.set_detect_anomaly(True):
 
-    for e in range(epoch):
-        net.train()
-        all_lose = 0
-        for u, i, r in tqdm(DataLoader(train_set, batch_size=batchSize, shuffle=True)):
-            r = torch.FloatTensor(r.detach().numpy())
-            optimizer.zero_grad()
-            i_index = i.detach().numpy()
-            adj_lists = dataloader4graph.graphSage4RecAdjType(G, i_index)
-            logits = net(u, adj_lists)
-            print(logits)
-            loss = criterion(logits, r)
-            all_lose += loss
-            loss.backward()
-            optimizer.step()
+        for e in range(epoch):
+            net.train()
+            all_lose = 0
+            for u, i, r in tqdm(DataLoader(train_set, batch_size=batchSize, shuffle=True)):
+                r = torch.FloatTensor(r.detach().numpy())
+                optimizer.zero_grad()
+                i_index = i.detach().numpy()
+                adj_lists = dataloader4graph.graphSage4RecAdjType(G, i_index)
+                logits = net(u, adj_lists)
+                # print(logits)
+                loss = criterion(logits, r)
+                all_lose += loss.item()
+                loss.backward()
+                optimizer.step()
 
-        print('epoch {}, avg_loss = {:.4f}'.format(e, all_lose / (len(train_set) // batchSize)))
+            print('epoch {}, avg_loss = {:.4f}'.format(e, all_lose / (len(train_set) // batchSize)))
 
-        # 评估模型
-        if e % eva_per_epochs == 0:
-            p, r, acc = doEva(net, train_set, G)
-            print('train: Precision {:.4f} | Recall {:.4f} | accuracy {:.4f}'.format(p, r, acc))
-            p, r, acc = doEva(net, test_set, G)
-            print('test: Precision {:.4f} | Recall {:.4f} | accuracy {:.4f}'.format(p, r, acc))
+            # 评估模型
+            if e % eva_per_epochs == 0:
+                p, r, acc = doEva(net, train_set, G)
+                print('train: Precision {:.4f} | Recall {:.4f} | accuracy {:.4f}'.format(p, r, acc))
+                p, r, acc = doEva(net, test_set, G)
+                print('test: Precision {:.4f} | Recall {:.4f} | accuracy {:.4f}'.format(p, r, acc))
 
     return net
 

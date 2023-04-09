@@ -14,7 +14,7 @@ class GAFM(torch.nn.Module):
 
         super(GAFM, self).__init__()
 
-        self.entitys = nn.Embedding(n_entitys, k_dim, max_norm=1)
+        self.entitys = nn.Embedding(n_entitys, k_dim)
         self.users = nn.Embedding(n_users, k_dim, max_norm=1)
 
         self.a_liner = nn.Linear(k_dim, t_dim)
