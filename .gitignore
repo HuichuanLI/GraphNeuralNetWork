@@ -46,3 +46,9 @@ data/Cora/Cora/raw/
 GNN/data_set/ml-latest-small/
 
 *.txt
+
+KG/data_set/ml-100k-orginal/
+
+KG/data_set/ml-100k/
+
+KG/data_set/ml-latest-small/
